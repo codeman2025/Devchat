@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DevChat Login</title>
   <style>
-    /* Make the terminal screen full height */
     body, html {
       margin: 0;
       padding: 0;
@@ -13,6 +12,35 @@
       font-family: "Courier New", monospace;
       background-color: #111;
       color: #0f0;
+    }
+
+    /* Center the login form */
+    .login-form {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: black;
+      position: absolute;
+    }
+
+    .login-form input {
+      margin: 10px;
+      padding: 10px;
+      border: none;
+      background-color: #333;
+      color: #0f0;
+      font-size: 16px;
+      width: 250px;
+    }
+
+    .login-form button {
+      padding: 10px 20px;
+      background-color: #0f0;
+      color: #111;
+      font-size: 16px;
+      cursor: pointer;
     }
 
     /* Terminal container */
@@ -25,17 +53,7 @@
       overflow-y: auto;
       font-size: 18px;
       background-color: black;
-    }
-
-    /* Style for terminal input */
-    .terminal input {
-      background: none;
-      border: none;
-      color: #0f0;
-      font-family: inherit;
-      font-size: inherit;
-      width: 100%;
-      outline: none;
+      display: none; /* Initially hidden */
     }
 
     .command-line {
@@ -55,7 +73,19 @@
   </style>
 </head>
 <body>
-  <div class="terminal">
+  <!-- Login Form -->
+  <div class="login-form" id="login-form">
+    <div>
+      <h1 style="color: #0f0;">Login</h1>
+      <input type="email" id="email" placeholder="Email" required>
+      <input type="password" id="password" placeholder="Password" required>
+      <button id="login-button">Login</button>
+      <p style="color: #0f0;">Don't have an account? <a href="#" id="register-link">Register</a></p>
+    </div>
+  </div>
+
+  <!-- Terminal -->
+  <div class="terminal" id="terminal">
     <div id="console-output" class="output"></div>
     <div class="command-line">
       <span>devchat@user:~$</span>
@@ -85,19 +115,42 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Function to output text to the terminal
+    // Log to console function
     function logToConsole(message) {
       const consoleOutput = document.getElementById("console-output");
       const newMessage = document.createElement("p");
       newMessage.textContent = message;
       consoleOutput.appendChild(newMessage);
-      consoleOutput.scrollTop = consoleOutput.scrollHeight; // Auto-scroll
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
     }
 
-    // Function for logging in
-    function login() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+    // Show the terminal and hide the login form
+    function showTerminal() {
+      document.getElementById("login-form").style.display = "none";
+      document.getElementById("terminal").style.display = "flex";
+    }
+
+    // Show the login form
+    function showLoginForm() {
+      document.getElementById("login-form").style.display = "flex";
+      document.getElementById("terminal").style.display = "none";
+    }
+
+    // Authentication state listener
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        logToConsole(`Logged in as: ${user.email}`);
+        showTerminal(); // Switch to terminal view after login
+      } else {
+        logToConsole("No user is logged in.");
+        showLoginForm(); // Show login form if no user is logged in
+      }
+    });
+
+    // Handle login button
+    document.getElementById("login-button").addEventListener("click", () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
 
       if (!email || !password) {
         logToConsole("Please enter both email and password.");
@@ -113,12 +166,13 @@
           const errorMessage = error.message;
           logToConsole(`Login Failed: ${errorCode} - ${errorMessage}`);
         });
-    }
+    });
 
-    // Function for creating a new account
-    function register() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+    // Register link click
+    document.getElementById("register-link").addEventListener("click", (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
 
       if (!email || !password) {
         logToConsole("Please enter both email and password.");
@@ -134,15 +188,6 @@
           const errorMessage = error.message;
           logToConsole(`Registration Failed: ${errorCode} - ${errorMessage}`);
         });
-    }
-
-    // Check if the user is already logged in
-    auth.onAuthStateChanged((user) => {
-      if (user) {
-        logToConsole(`Logged in as: ${user.email}`);
-      } else {
-        logToConsole("No user is logged in.");
-      }
     });
 
     // Handle terminal input (login/register commands)
@@ -153,9 +198,17 @@
         logToConsole(`$ ${command}`);
 
         if (command.startsWith("login")) {
-          login();
+          const email = prompt("Enter your email:");
+          const password = prompt("Enter your password:");
+          signInWithEmailAndPassword(auth, email, password)
+            .then(() => logToConsole("Logged in successfully!"))
+            .catch((error) => logToConsole(`Login Failed: ${error.message}`));
         } else if (command.startsWith("register")) {
-          register();
+          const email = prompt("Enter your email:");
+          const password = prompt("Enter your password:");
+          createUserWithEmailAndPassword(auth, email, password)
+            .then(() => logToConsole("Registered new account successfully!"))
+            .catch((error) => logToConsole(`Registration Failed: ${error.message}`));
         } else {
           logToConsole("Unknown command.");
         }
