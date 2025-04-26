@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevChat</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .hidden { display: none; }
+    .header { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+    .message { border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
+    .btn { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+    .btn:hover { background-color: #45a049; }
+    #message-list { max-width: 500px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+  <!-- Login Page -->
+  <div id="login-page">
+    <h2 class="header">DevChat Login</h2>
+    <input type="email" id="email" placeholder="Enter your email" style="padding: 10px; width: 100%; margin-bottom: 10px;" />
+    <input type="password" id="password" placeholder="Enter your password" style="padding: 10px; width: 100%; margin-bottom: 10px;" />
+    <button class="btn" onclick="login()">Login</button>
+    <button class="btn" onclick="register()">Register</button>
+  </div>
+
+  <!-- Chat Page (Inbox) -->
+  <div id="chat-page" class="hidden">
+    <h2 class="header">Inbox</h2>
+    <button class="btn" onclick="composeMessage()">Compose Message</button>
+    <div id="message-list"></div>
+  </div>
+
+  <!-- Compose Message -->
+  <div id="compose-page" class="hidden">
+    <h2 class="header">Compose a New Message</h2>
+    <input type="text" id="recipient" placeholder="Recipient's Email" style="padding: 10px; width: 100%; margin-bottom: 10px;" />
+    <textarea id="message-content" placeholder="Type your message..." style="padding: 10px; width: 100%; height: 100px; margin-bottom: 10px;"></textarea>
+    <button class="btn" onclick="sendMessage()">Send Message</button>
+    <button class="btn" onclick="goBack()">Back to Inbox</button>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAe8kZK1EtKX92L2Sopk5uSi2PDTzMtH6M",
+      authDomain: "devchat-97f99.firebaseapp.com",
+      projectId: "devchat-97f99",
+      storageBucket: "devchat-97f99.firebasestorage.app",
+      messagingSenderId: "778378732801",
+      appId: "1:778378732801:web:2b668fa9c6a22d6a8f2700",
+      measurementId: "G-5STVV3XZ0D"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth();
+    const db = getFirestore();
+
+    let currentUser = '';
+
+    // Login Function
+    function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      signInWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          currentUser = userCredential.user;
+          console.log("Logged in as:", currentUser.email);
+          document.getElementById('login-page').classList.add('hidden');
+          document.getElementById('chat-page').classList.remove('hidden');
+          loadMessages();
+        })
+        .catch((error) => {
+          console.error(error.message);
+          alert('Login failed. Check your credentials!');
+        });
+    }
+
+    // Register Function
+    function register() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      createUserWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          currentUser = userCredential.user;
+          console.log("User registered:", currentUser.email);
+          document.getElementById('login-page').classList.add('hidden');
+          document.getElementById('chat-page').classList.remove('hidden');
+        })
+        .catch((error) => {
+          console.error(error.message);
+          alert('Registration failed. Please try again.');
+        });
+    }
+
+    // Compose Message
+    function composeMessage() {
+      document.getElementById('chat-page').classList.add('hidden');
+      document.getElementById('compose-page').classList.remove('hidden');
+    }
+
+    // Send Message
+    function sendMessage() {
+      const recipient = document.getElementById('recipient').value;
+      const messageContent = document.getElementById('message-content').value;
+      
+      if (recipient && messageContent) {
+        addDoc(collection(db, "messages"), {
+          sender: currentUser.email,
+          recipient: recipient,
+          message: messageContent,
+          timestamp: new Date()
+        })
+        .then(() => {
+          alert("Message sent!");
+          document.getElementById('recipient').value = '';
+          document.getElementById('message-content').value = '';
+          loadMessages();
+        })
+        .catch((error) => {
+          console.error("Error sending message: ", error);
+        });
+      }
+    }
+
+    // Go back to Inbox
+    function goBack() {
+      document.getElementById('compose-page').classList.add('hidden');
+      document.getElementById('chat-page').classList.remove('hidden');
+      loadMessages();
+    }
+
+    // Load Messages
+    function loadMessages() {
+      const messageList = document.getElementById('message-list');
+      messageList.innerHTML = '';
+      getDocs(collection(db, "messages"))
+        .then((querySnapshot) => {
+          querySnapshot.forEach((doc) => {
+            const messageData = doc.data();
+            if (messageData.recipient === currentUser.email || messageData.sender === currentUser.email) {
+              const messageDiv = document.createElement('div');
+              messageDiv.classList.add('message');
+              messageDiv.innerHTML = `<strong>${messageData.sender}</strong> to <strong>${messageData.recipient}</strong>:<br>${messageData.message}`;
+              messageList.appendChild(messageDiv);
+            }
+          });
+        })
+        .catch((error) => {
+          console.error("Error loading messages: ", error);
+        });
+    }
+  </script>
+
+</body>
+</html>
