@@ -2,276 +2,167 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>DevChat Terminal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevChat Login</title>
   <style>
-    body {
-      background-color: #000;
-      color: #ccc;
-      font-family: 'Courier New', Courier, monospace;
-      padding: 20px;
-    }
-    input, textarea {
-      background-color: #111;
-      color: #eee;
-      border: 1px solid #555;
-      padding: 10px;
-      width: 100%;
-      margin-bottom: 10px;
-    }
-    button {
-      background-color: #222;
-      color: #eee;
-      border: 1px solid #555;
-      padding: 10px 20px;
-      margin-right: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #007bff;
-      color: #fff;
-      border-color: #007bff;
-    }
-    .hidden { display: none; }
-    .header { font-size: 22px; font-weight: bold; margin-bottom: 20px; color: #eee; }
-    .message {
-      border: 1px solid #333;
-      padding: 10px;
-      margin: 10px 0;
-      background-color: #111;
-    }
-    #message-list {
-      max-width: 700px;
-      margin-top: 20px;
-    }
-    .terminal-prompt {
-      color: #007bff;
-      font-weight: bold;
-    }
-    #console {
+    /* Make the terminal screen full height */
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: "Courier New", monospace;
       background-color: #111;
       color: #0f0;
-      padding: 10px;
-      margin-top: 20px;
-      font-family: monospace;
-      height: 200px;
-      overflow-y: scroll;
-      border: 1px solid #555;
     }
-    .console-message {
-      font-size: 14px;
+
+    /* Terminal container */
+    .terminal {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      overflow-y: auto;
+      font-size: 18px;
+      background-color: black;
+    }
+
+    /* Style for terminal input */
+    .terminal input {
+      background: none;
+      border: none;
+      color: #0f0;
+      font-family: inherit;
+      font-size: inherit;
+      width: 100%;
+      outline: none;
+    }
+
+    .command-line {
+      display: flex;
+      margin-bottom: 10px;
+    }
+
+    /* Style for the console output */
+    .output {
+      margin-top: 5px;
+      padding-left: 15px;
+    }
+
+    .output p {
+      margin: 0;
     }
   </style>
 </head>
 <body>
-
-  <!-- Bootup Animation -->
-  <div id="bootup-page">
-    <div class="header">[ Booting DevChat Terminal ]</div>
-    <div id="boot-animation"></div>
-    <div id="console"></div>
+  <div class="terminal">
+    <div id="console-output" class="output"></div>
+    <div class="command-line">
+      <span>devchat@user:~$</span>
+      <input type="text" id="command-input" placeholder="Enter command..." />
+    </div>
   </div>
 
-  <!-- Login/Register Page -->
-  <div id="login-page" class="hidden">
-    <div class="header">[ DevChat Login Terminal ]</div>
-    <div class="terminal-prompt">dev@devchat:~$</div>
-    <input type="email" id="email" placeholder="email@domain.com" />
-    <div class="terminal-prompt">dev@devchat:~$</div>
-    <input type="password" id="password" placeholder="Password" />
-    <button onclick="login()">Login</button>
-    <button onclick="register()">Register</button>
-  </div>
+  <script type="module">
+    // Firebase SDK imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  <!-- Chat Page -->
-  <div id="chat-page" class="hidden">
-    <div class="header">[ DevChat Inbox ]</div>
-    <button onclick="composeMessage()">Compose</button>
-    <button onclick="logout()">Logout</button>
-    <div id="message-list"></div>
-  </div>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAe8kZK1EtKX92L2Sopk5uSi2PDTzMtH6M",
+      authDomain: "devchat-97f99.firebaseapp.com",
+      projectId: "devchat-97f99",
+      storageBucket: "devchat-97f99.firebasestorage.app",
+      messagingSenderId: "778378732801",
+      appId: "1:778378732801:web:2b668fa9c6a22d6a8f2700",
+      measurementId: "G-5STVV3XZ0D"
+    };
 
-  <!-- Compose Page -->
-  <div id="compose-page" class="hidden">
-    <div class="header">[ Compose New Message ]</div>
-    <div class="terminal-prompt">dev@devchat:~$</div>
-    <input type="text" id="recipient" placeholder="recipient@domain.com" />
-    <div class="terminal-prompt">dev@devchat:~$</div>
-    <textarea id="message-content" placeholder="Type your message here..."></textarea>
-    <button onclick="sendMessage()">Send</button>
-    <button onclick="goBack()">Back</button>
-  </div>
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-<script type="module">
-  // Import Firebase SDKs
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-  // Firebase config
-  const firebaseConfig = {
-    apiKey: "AIzaSyAe8kZK1EtKX92L2Sopk5uSi2PDTzMtH6M",
-    authDomain: "devchat-97f99.firebaseapp.com",
-    projectId: "devchat-97f99",
-    storageBucket: "devchat-97f99.appspot.com",
-    messagingSenderId: "778378732801",
-    appId: "1:778378732801:web:2b668fa9c6a22d6a8f2700",
-    measurementId: "G-5STVV3XZ0D"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-
-  let currentUser = null;
-
-  // Auth state change listener
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      currentUser = user;
-      showChat();
-      loadMessages();
-    } else {
-      currentUser = null;
-      document.getElementById('chat-page').classList.add('hidden');
-      document.getElementById('compose-page').classList.add('hidden');
-      document.getElementById('login-page').classList.remove('hidden');
-    }
-  });
-
-  // Login
-  function login() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    signInWithEmailAndPassword(auth, email, password)
-      .then(() => {
-        logToConsole("Logged in successfully!");
-      })
-      .catch((error) => {
-        logToConsole("Login Failed: " + error.message);
-      });
-  }
-
-  // Register
-  function register() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    createUserWithEmailAndPassword(auth, email, password)
-      .then(() => {
-        logToConsole("Registered new account!");
-      })
-      .catch((error) => {
-        logToConsole("Registration Failed: " + error.message);
-      });
-  }
-
-  // Logout
-  function logout() {
-    signOut(auth).then(() => {
-      logToConsole("Logged out");
-    });
-  }
-
-  // Show chat
-  function showChat() {
-    document.getElementById('login-page').classList.add('hidden');
-    document.getElementById('compose-page').classList.add('hidden');
-    document.getElementById('chat-page').classList.remove('hidden');
-  }
-
-  // Compose message
-  function composeMessage() {
-    document.getElementById('chat-page').classList.add('hidden');
-    document.getElementById('compose-page').classList.remove('hidden');
-  }
-
-  // Go back
-  function goBack() {
-    document.getElementById('compose-page').classList.add('hidden');
-    document.getElementById('chat-page').classList.remove('hidden');
-    loadMessages();
-  }
-
-  // Send message
-  async function sendMessage() {
-    const recipient = document.getElementById('recipient').value;
-    const messageContent = document.getElementById('message-content').value;
-
-    if (!recipient || !messageContent) {
-      logToConsole("Please fill in both fields.");
-      return;
+    // Function to output text to the terminal
+    function logToConsole(message) {
+      const consoleOutput = document.getElementById("console-output");
+      const newMessage = document.createElement("p");
+      newMessage.textContent = message;
+      consoleOutput.appendChild(newMessage);
+      consoleOutput.scrollTop = consoleOutput.scrollHeight; // Auto-scroll
     }
 
-    await addDoc(collection(db, "messages"), {
-      sender: currentUser.email,
-      recipient: recipient,
-      message: messageContent,
-      timestamp: serverTimestamp()
-    });
+    // Function for logging in
+    function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
 
-    logToConsole("Message sent!");
-    document.getElementById('recipient').value = "";
-    document.getElementById('message-content').value = "";
-    goBack();
-  }
-
-  // Load messages
-  async function loadMessages() {
-    const messageList = document.getElementById('message-list');
-    messageList.innerHTML = "";
-
-    const q = query(collection(db, "messages"), orderBy("timestamp", "desc"));
-    const querySnapshot = await getDocs(q);
-
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      if (data.recipient === currentUser.email || data.sender === currentUser.email) {
-        const div = document.createElement('div');
-        div.className = "message";
-        div.innerHTML = `<div><strong>${data.sender}</strong> ➔ <strong>${data.recipient}</strong></div><div>${data.message}</div>`;
-        messageList.appendChild(div);
+      if (!email || !password) {
+        logToConsole("Please enter both email and password.");
+        return;
       }
-    });
-  }
 
-  // Log to console
-  function logToConsole(message) {
-    const consoleDiv = document.getElementById('console');
-    const newLog = document.createElement('div');
-    newLog.className = 'console-message';
-    newLog.textContent = "> " + message;
-    consoleDiv.appendChild(newLog);
-    consoleDiv.scrollTop = consoleDiv.scrollHeight; // Auto scroll down
-  }
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          logToConsole("Logged in successfully!");
+        })
+        .catch((error) => {
+          const errorCode = error.code;
+          const errorMessage = error.message;
+          logToConsole(`Login Failed: ${errorCode} - ${errorMessage}`);
+        });
+    }
 
-  // Boot animation
-  function bootAnimation() {
-    const bootUpText = [
-      'Booting DevChat Terminal...',
-      'Initializing Firebase...',
-      'Loading User Authentication...',
-      'Connecting to Database...',
-      'DevChat Terminal Ready!'
-    ];
-    let i = 0;
-    const bootUpDiv = document.getElementById('boot-animation');
-    
-    function typeAnimation() {
-      if (i < bootUpText.length) {
-        logToConsole(bootUpText[i]);
-        i++;
-        setTimeout(typeAnimation, 2000);
+    // Function for creating a new account
+    function register() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        logToConsole("Please enter both email and password.");
+        return;
+      }
+
+      createUserWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          logToConsole("Registered new account successfully!");
+        })
+        .catch((error) => {
+          const errorCode = error.code;
+          const errorMessage = error.message;
+          logToConsole(`Registration Failed: ${errorCode} - ${errorMessage}`);
+        });
+    }
+
+    // Check if the user is already logged in
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        logToConsole(`Logged in as: ${user.email}`);
       } else {
-        document.getElementById('bootup-page').classList.add('hidden');
-        document.getElementById('login-page').classList.remove('hidden');
+        logToConsole("No user is logged in.");
       }
-    }
-    typeAnimation();
-  }
+    });
 
-  // Start boot animation
-  bootAnimation();
-</script>
+    // Handle terminal input (login/register commands)
+    const commandInput = document.getElementById("command-input");
+    commandInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        const command = commandInput.value.trim();
+        logToConsole(`$ ${command}`);
 
+        if (command.startsWith("login")) {
+          login();
+        } else if (command.startsWith("register")) {
+          register();
+        } else {
+          logToConsole("Unknown command.");
+        }
+
+        commandInput.value = ""; // Clear the input
+      }
+    });
+  </script>
 </body>
 </html>
