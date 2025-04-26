@@ -2,50 +2,90 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>DevChat</title>
+  <title>DevChat Terminal</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
+    body {
+      background-color: #000;
+      color: #ccc;
+      font-family: 'Courier New', Courier, monospace;
+      padding: 20px;
+    }
+    input, textarea {
+      background-color: #111;
+      color: #eee;
+      border: 1px solid #555;
+      padding: 10px;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    button {
+      background-color: #222;
+      color: #eee;
+      border: 1px solid #555;
+      padding: 10px 20px;
+      margin-right: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #007bff;
+      color: #fff;
+      border-color: #007bff;
+    }
     .hidden { display: none; }
-    .header { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-    .message { border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
-    .btn { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
-    .btn:hover { background-color: #45a049; }
-    #message-list { max-width: 500px; margin-top: 20px; }
+    .header { font-size: 22px; font-weight: bold; margin-bottom: 20px; color: #eee; }
+    .message {
+      border: 1px solid #333;
+      padding: 10px;
+      margin: 10px 0;
+      background-color: #111;
+    }
+    #message-list {
+      max-width: 700px;
+      margin-top: 20px;
+    }
+    .terminal-prompt {
+      color: #007bff;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
 
   <!-- Login/Register Page -->
   <div id="login-page">
-    <h2 class="header">DevChat Login</h2>
-    <input type="email" id="email" placeholder="Email" style="padding:10px;width:100%;margin-bottom:10px;" />
-    <input type="password" id="password" placeholder="Password" style="padding:10px;width:100%;margin-bottom:10px;" />
-    <button class="btn" onclick="login()">Login</button>
-    <button class="btn" onclick="register()">Register</button>
+    <div class="header">[ DevChat Login Terminal ]</div>
+    <div class="terminal-prompt">dev@devchat:~$</div>
+    <input type="email" id="email" placeholder="email@domain.com" />
+    <div class="terminal-prompt">dev@devchat:~$</div>
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
   </div>
 
   <!-- Chat Page -->
   <div id="chat-page" class="hidden">
-    <h2 class="header">Inbox</h2>
-    <button class="btn" onclick="composeMessage()">Compose</button>
-    <button class="btn" onclick="logout()">Logout</button>
+    <div class="header">[ DevChat Inbox ]</div>
+    <button onclick="composeMessage()">Compose</button>
+    <button onclick="logout()">Logout</button>
     <div id="message-list"></div>
   </div>
 
   <!-- Compose Page -->
   <div id="compose-page" class="hidden">
-    <h2 class="header">Compose Message</h2>
-    <input type="text" id="recipient" placeholder="Recipient's Email" style="padding:10px;width:100%;margin-bottom:10px;" />
-    <textarea id="message-content" placeholder="Your message..." style="padding:10px;width:100%;height:100px;margin-bottom:10px;"></textarea>
-    <button class="btn" onclick="sendMessage()">Send</button>
-    <button class="btn" onclick="goBack()">Back</button>
+    <div class="header">[ Compose New Message ]</div>
+    <div class="terminal-prompt">dev@devchat:~$</div>
+    <input type="text" id="recipient" placeholder="recipient@domain.com" />
+    <div class="terminal-prompt">dev@devchat:~$</div>
+    <textarea id="message-content" placeholder="Type your message here..."></textarea>
+    <button onclick="sendMessage()">Send</button>
+    <button onclick="goBack()">Back</button>
   </div>
 
 <script type="module">
   // Import Firebase SDKs
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
   // Firebase config
   const firebaseConfig = {
@@ -65,31 +105,40 @@
 
   let currentUser = null;
 
-  // Login function
+  // Auth state change listener
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      currentUser = user;
+      showChat();
+      loadMessages();
+    } else {
+      currentUser = null;
+      document.getElementById('chat-page').classList.add('hidden');
+      document.getElementById('compose-page').classList.add('hidden');
+      document.getElementById('login-page').classList.remove('hidden');
+    }
+  });
+
+  // Login
   function login() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        currentUser = userCredential.user;
-        console.log("Logged in:", currentUser.email);
-        showChat();
-        loadMessages();
+      .then(() => {
+        console.log("Logged in");
       })
       .catch((error) => {
         alert("Login Failed: " + error.message);
       });
   }
 
-  // Register function
+  // Register
   function register() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     createUserWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        currentUser = userCredential.user;
-        console.log("Registered:", currentUser.email);
-        showChat();
+      .then(() => {
+        console.log("Registered");
       })
       .catch((error) => {
         alert("Registration Failed: " + error.message);
@@ -99,46 +148,45 @@
   // Logout
   function logout() {
     signOut(auth).then(() => {
-      document.getElementById('chat-page').classList.add('hidden');
-      document.getElementById('login-page').classList.remove('hidden');
-      currentUser = null;
+      console.log("Logged out");
     });
   }
 
-  // Show chat page
+  // Show chat
   function showChat() {
     document.getElementById('login-page').classList.add('hidden');
+    document.getElementById('compose-page').classList.add('hidden');
     document.getElementById('chat-page').classList.remove('hidden');
   }
 
-  // Compose new message
+  // Compose message
   function composeMessage() {
     document.getElementById('chat-page').classList.add('hidden');
     document.getElementById('compose-page').classList.remove('hidden');
   }
 
-  // Go back to inbox
+  // Go back
   function goBack() {
     document.getElementById('compose-page').classList.add('hidden');
     document.getElementById('chat-page').classList.remove('hidden');
     loadMessages();
   }
 
-  // Send new message
+  // Send message
   async function sendMessage() {
     const recipient = document.getElementById('recipient').value;
-    const message = document.getElementById('message-content').value;
+    const messageContent = document.getElementById('message-content').value;
 
-    if (!recipient || !message) {
-      alert("Fill in both fields!");
+    if (!recipient || !messageContent) {
+      alert("Please fill in both fields.");
       return;
     }
 
     await addDoc(collection(db, "messages"), {
       sender: currentUser.email,
       recipient: recipient,
-      message: message,
-      timestamp: new Date()
+      message: messageContent,
+      timestamp: serverTimestamp()
     });
 
     alert("Message sent!");
@@ -147,7 +195,7 @@
     goBack();
   }
 
-  // Load inbox messages
+  // Load messages
   async function loadMessages() {
     const messageList = document.getElementById('message-list');
     messageList.innerHTML = "";
@@ -160,7 +208,7 @@
       if (data.recipient === currentUser.email || data.sender === currentUser.email) {
         const div = document.createElement('div');
         div.className = "message";
-        div.innerHTML = `<strong>${data.sender}</strong> ➔ <strong>${data.recipient}</strong><br>${data.message}`;
+        div.innerHTML = `<div><strong>${data.sender}</strong> ➔ <strong>${data.recipient}</strong></div><div>${data.message}</div>`;
         messageList.appendChild(div);
       }
     });
