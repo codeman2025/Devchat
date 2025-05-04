@@ -122,7 +122,7 @@
     // Firebase imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Firebase config
     const firebaseConfig = {
@@ -209,7 +209,7 @@
         logToConsole(`$ ${command}`);
 
         if (command === "help") {
-          logToConsole("Available Commands:\nhelp - Show all available commands\nsend message <message> - Send a message to current channel\njoin <channel_name> - Join a channel\nsend code <code> - Send a code snippet\nlogout - Logout");
+          logToConsole("Available Commands:\nhelp - Show all available commands\nsend message <message> - Send a message to current channel\njoin <channel_name> - Join a channel\nsend code <code> - Send a code snippet\nlogout - Logout\nadd username <new_username> - Change your username\nwhoami - Show your current username and status\nping - Test connection\nclear - Clear the terminal output\ncreate channel <channel_name> - Create a new channel\ndelete channel <channel_name> - Delete a channel\nsend message <message> - Send a message to the channel\nlist channels - List all channels");
         } else if (command.startsWith("send message")) {
           const message = command.substring(13);
           channels[currentChannel].push(message);
@@ -242,6 +242,33 @@
           signOut(auth);
           logToConsole("Logged out.");
           showLoginForm();
+        } else if (command.startsWith("add username")) {
+          const newUsername = command.split(" ")[2];
+          logToConsole(`Username changed to: ${newUsername}`);
+        } else if (command === "whoami") {
+          logToConsole(`You are logged in as: ${currentUser.email}`);
+        } else if (command === "ping") {
+          logToConsole("Pong!");
+        } else if (command === "clear") {
+          document.getElementById("console-output").innerHTML = "";
+        } else if (command.startsWith("create channel")) {
+          const newChannel = command.split(" ")[2];
+          if (!channels[newChannel]) {
+            channels[newChannel] = [];
+            logToConsole(`Channel #${newChannel} created.`);
+          } else {
+            logToConsole("Channel already exists.");
+          }
+        } else if (command.startsWith("delete channel")) {
+          const channelToDelete = command.split(" ")[2];
+          if (channels[channelToDelete]) {
+            delete channels[channelToDelete];
+            logToConsole(`Channel #${channelToDelete} deleted.`);
+          } else {
+            logToConsole("Channel not found.");
+          }
+        } else if (command === "list channels") {
+          logToConsole("Channels: " + Object.keys(channels).join(", "));
         } else {
           logToConsole("Unknown command.");
         }
