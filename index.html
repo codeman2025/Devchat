@@ -11,7 +11,7 @@
       height: 100%;
       font-family: "Courier New", monospace;
       background-color: #111;
-      color: #0f0;
+      color: #00f; /* Change text to blue */
     }
 
     /* Center the login form */
@@ -31,13 +31,13 @@
       padding: 10px;
       border: none;
       background-color: #333;
-      color: #0f0;
+      color: #00f;
       font-size: 16px;
       width: 250px;
     }
 
     .login-form button {
-      background-color: #0f0;
+      background-color: #00f;
       color: #111;
       cursor: pointer;
     }
@@ -63,7 +63,7 @@
 
     .command-line input {
       background-color: #222;
-      color: #0f0;
+      color: #00f; /* Change text color to blue */
       border: none;
       padding: 10px;
       flex-grow: 1;
@@ -95,11 +95,11 @@
   <!-- Login Form -->
   <div class="login-form" id="login-form">
     <div>
-      <h1 style="color: #0f0;">Login</h1>
+      <h1 style="color: #00f;">Login</h1>
       <input type="email" id="email" placeholder="Email" required>
       <input type="password" id="password" placeholder="Password" required>
       <button id="login-button">Login</button>
-      <p style="color: #0f0;">Don't have an account? <a href="#" id="register-link">Register</a></p>
+      <p style="color: #00f;">Don't have an account? <a href="#" id="register-link">Register</a></p>
     </div>
   </div>
 
@@ -154,7 +154,16 @@
 
       switch (cmd) {
         case 'help':
-          logToConsole("Commands: help, send code, logout, clear, dm, set status, whoami, etc.");
+          logToConsole("Available Commands:\n");
+          logToConsole("help: Show all available commands");
+          logToConsole("send code <code>: Send a code snippet to others");
+          logToConsole("logout: Logout from your account");
+          logToConsole("clear: Clear the terminal output");
+          logToConsole("ping: Test connection (Pong!)");
+          logToConsole("set status <status>: Set your status (e.g., 'busy', 'away')");
+          logToConsole("whoami: Show your username and status");
+          logToConsole("dm <user> <message>: Send a direct message to a user");
+          logToConsole("add username <new_username>: Change your username");
           break;
 
         case 'send code':
