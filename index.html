@@ -3,56 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DevChat Terminal</title>
+  <title>DevChat</title>
   <style>
     body, html {
       margin: 0;
       padding: 0;
       height: 100%;
       font-family: "Courier New", monospace;
-      background-color: #2f3136;
-      color: #ffffff;
+      background-color: #111;
+      color: #0f0;
     }
 
-    /* Login Modal */
+    /* Center the login form */
     .login-form {
       width: 100%;
       height: 100%;
       display: flex;
       justify-content: center;
       align-items: center;
-      background-color: #2f3136;
+      background-color: black;
       position: absolute;
-      z-index: 100;
+      z-index: 10;
     }
 
-    .login-form input {
+    .login-form input, .login-form button {
       margin: 10px;
       padding: 10px;
-      border: 1px solid #444;
-      background-color: #202225;
-      color: #ffffff;
+      border: none;
+      background-color: #333;
+      color: #0f0;
       font-size: 16px;
-      width: 300px;
-      border-radius: 5px;
+      width: 250px;
     }
 
     .login-form button {
-      padding: 10px 20px;
-      background-color: #7289da;
-      color: #ffffff;
-      font-size: 16px;
+      background-color: #0f0;
+      color: #111;
       cursor: pointer;
-      border: none;
-      border-radius: 5px;
-      width: 300px;
     }
 
-    .login-form button:hover {
-      background-color: #5b6eae;
-    }
-
-    /* Terminal Styling */
+    /* Terminal container */
     .terminal {
       width: 100%;
       height: 100%;
@@ -60,9 +50,10 @@
       flex-direction: column;
       padding: 10px;
       overflow-y: auto;
-      background-color: #1e2124;
+      font-size: 18px;
+      background-color: black;
       display: none; /* Initially hidden */
-      color: #ffffff;
+      z-index: 1;
     }
 
     .command-line {
@@ -71,22 +62,16 @@
     }
 
     .command-line input {
-      background-color: #2f3136;
-      border: 1px solid #444;
-      color: #ffffff;
-      font-size: 16px;
-      padding: 8px;
-      flex: 1;
-      border-radius: 5px;
+      background-color: #222;
+      color: #0f0;
+      border: none;
+      padding: 10px;
+      flex-grow: 1;
     }
 
-    .command-line span {
-      margin-right: 10px;
-      color: #7289da;
-    }
-
-    /* Console Output */
+    /* Style for the console output */
     .output {
+      margin-top: 5px;
       padding-left: 15px;
     }
 
@@ -94,54 +79,27 @@
       margin: 0;
     }
 
-    /* Code Block Styling */
-    .code-block {
-      background-color: #2c2f38;
-      border: 1px solid #444;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 5px;
-      font-family: monospace;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      color: #dcdcdc;
-    }
-
-    .code-block pre {
-      margin: 0;
-      font-size: 14px;
-    }
-
-    @media (max-width: 768px) {
-      .login-form input, .login-form button {
-        width: 250px;
-      }
-
-      .command-line input {
-        font-size: 14px;
-      }
-    }
-
-    @media (max-width: 480px) {
+    /* Mobile-friendly adjustments */
+    @media (max-width: 600px) {
       .login-form input, .login-form button {
         width: 200px;
       }
-
       .command-line input {
-        font-size: 12px;
+        width: 100%;
       }
     }
   </style>
 </head>
 <body>
+
   <!-- Login Form -->
   <div class="login-form" id="login-form">
     <div>
-      <h1 style="color: #7289da;">Login</h1>
+      <h1 style="color: #0f0;">Login</h1>
       <input type="email" id="email" placeholder="Email" required>
       <input type="password" id="password" placeholder="Password" required>
       <button id="login-button">Login</button>
-      <p style="color: #7289da;">Don't have an account? <a href="#" id="register-link">Register</a></p>
+      <p style="color: #0f0;">Don't have an account? <a href="#" id="register-link">Register</a></p>
     </div>
   </div>
 
@@ -155,11 +113,12 @@
   </div>
 
   <script type="module">
+    // Firebase imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Firebase Configuration
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyAe8kZK1EtKX92L2Sopk5uSi2PDTzMtH6M",
       authDomain: "devchat-97f99.firebaseapp.com",
@@ -170,11 +129,16 @@
       measurementId: "G-5STVV3XZ0D"
     };
 
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Log function for terminal output
+    // User info and status
+    let username = "devUser";  // Default username
+    let status = "Online";  // Default status
+
+    // Log to console function
     function logToConsole(message) {
       const consoleOutput = document.getElementById("console-output");
       const newMessage = document.createElement("p");
@@ -183,7 +147,64 @@
       consoleOutput.scrollTop = consoleOutput.scrollHeight;
     }
 
-    // Show the terminal
+    // Command processing function
+    function processCommand(command) {
+      const args = command.split(' ');
+      const cmd = args[0].toLowerCase();
+
+      switch (cmd) {
+        case 'help':
+          logToConsole("Commands: help, send code, logout, clear, dm, set status, whoami, etc.");
+          break;
+
+        case 'send code':
+          const codeSnippet = args.slice(2).join(' ');
+          logToConsole(`Code shared: ${codeSnippet}`);
+          break;
+
+        case 'logout':
+          logToConsole("Logging out...");
+          auth.signOut().then(() => {
+            showLoginForm();
+          });
+          break;
+
+        case 'clear':
+          document.getElementById('console-output').innerHTML = '';
+          break;
+
+        case 'ping':
+          logToConsole("Pong!");
+          break;
+
+        case 'set status':
+          const newStatus = args.slice(2).join(' ');
+          status = newStatus;
+          logToConsole(`Status set to: ${status}`);
+          break;
+
+        case 'whoami':
+          logToConsole(`You are ${username}, status: ${status}`);
+          break;
+
+        case 'dm':
+          const user = args[1];
+          const dmMessage = args.slice(2).join(' ');
+          logToConsole(`Direct message to ${user}: ${dmMessage}`);
+          break;
+
+        case 'add username':
+          const newUsername = args.slice(2).join(' ');
+          username = newUsername;
+          logToConsole(`Username changed to: ${username}`);
+          break;
+
+        default:
+          logToConsole("Unknown command. Type 'help' for a list of available commands.");
+      }
+    }
+
+    // Show the terminal and hide the login form
     function showTerminal() {
       document.getElementById("login-form").style.display = "none";
       document.getElementById("terminal").style.display = "flex";
@@ -195,18 +216,18 @@
       document.getElementById("terminal").style.display = "none";
     }
 
-    // Handle authentication state
+    // Authentication state listener
     auth.onAuthStateChanged((user) => {
       if (user) {
         logToConsole(`Logged in as: ${user.email}`);
-        showTerminal();
+        showTerminal(); // Switch to terminal view after login
       } else {
         logToConsole("No user is logged in.");
-        showLoginForm();
+        showLoginForm(); // Show login form if no user is logged in
       }
     });
 
-    // Login button functionality
+    // Handle login button
     document.getElementById("login-button").addEventListener("click", () => {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
@@ -221,11 +242,13 @@
           logToConsole("Logged in successfully!");
         })
         .catch((error) => {
-          logToConsole(`Login Failed: ${error.message}`);
+          const errorCode = error.code;
+          const errorMessage = error.message;
+          logToConsole(`Login Failed: ${errorCode} - ${errorMessage}`);
         });
     });
 
-    // Register link functionality
+    // Register link click
     document.getElementById("register-link").addEventListener("click", (e) => {
       e.preventDefault();
       const email = document.getElementById("email").value;
@@ -241,47 +264,23 @@
           logToConsole("Registered new account successfully!");
         })
         .catch((error) => {
-          logToConsole(`Registration Failed: ${error.message}`);
+          const errorCode = error.code;
+          const errorMessage = error.message;
+          logToConsole(`Registration Failed: ${errorCode} - ${errorMessage}`);
         });
     });
 
-    // Handle terminal commands
+    // Handle terminal input (login/register commands)
     const commandInput = document.getElementById("command-input");
     commandInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
         const command = commandInput.value.trim();
-        logToConsole(`$ ${command}`);
-
-        if (command === "help") {
-          logToConsole("Available commands:\n- help: Show this help message\n- send code <code>: Share your code snippet");
-        } else if (command.startsWith("send code")) {
-          const code = command.slice(10).trim(); // Extract the code after 'send code'
-          logToConsole(`Code sent:`);
-          const codeBlock = document.createElement("div");
-          codeBlock.classList.add("code-block");
-          codeBlock.textContent = code;
-          document.getElementById("console-output").appendChild(codeBlock);
-        } else {
-          logToConsole("Unknown command. Type 'help' for a list of commands.");
-        }
-
-        commandInput.value = ""; // Clear input after command execution
+        logToConsole(`$ ${command}`);  // Show the typed command
+        processCommand(command.toLowerCase());
+        commandInput.value = '';  // Clear the input
       }
     });
-
-    // Handle logout
-    function logout() {
-      signOut(auth)
-        .then(() => {
-          logToConsole("Logged out successfully.");
-        })
-        .catch((error) => {
-          logToConsole(`Logout Failed: ${error.message}`);
-        });
-    }
-
-    // Example of logging out after a period (for testing)
-    setTimeout(logout, 600000); // Log out after 10 minutes (600000 ms)
   </script>
+
 </body>
 </html>
