@@ -11,7 +11,7 @@
       height: 100%;
       font-family: "Courier New", monospace;
       background-color: #111;
-      color: #00f; /* Change text to blue */
+      color: #00f; /* Text color blue */
     }
 
     .login-form {
@@ -35,12 +35,6 @@
       width: 250px;
     }
 
-    .login-form button {
-      background-color: #00f;
-      color: #111;
-      cursor: pointer;
-    }
-
     .terminal {
       width: 100%;
       height: 100%;
@@ -48,10 +42,13 @@
       flex-direction: column;
       padding: 10px;
       overflow-y: auto;
-      font-size: 18px;
       background-color: black;
       display: none;
-      z-index: 1;
+    }
+
+    .output {
+      margin-top: 5px;
+      padding-left: 15px;
     }
 
     .command-line {
@@ -60,57 +57,74 @@
     }
 
     .command-line input {
-      background-color: #222;
-      color: #00f;
-      border: none;
+      margin-left: 10px;
       padding: 10px;
-      flex-grow: 1;
+      background-color: #333;
+      color: #00f;
+      font-size: 16px;
+      border: none;
+      width: 250px;
     }
 
-    .output {
-      margin-top: 5px;
-      padding-left: 15px;
+    .channel-name {
+      color: #0f0;
     }
 
-    .output p {
-      margin: 0;
+    .channel-list {
+      margin-bottom: 15px;
     }
 
-    @media (max-width: 600px) {
-      .login-form input, .login-form button {
-        width: 200px;
-      }
-      .command-line input {
-        width: 100%;
-      }
+    .channel-list a {
+      display: block;
+      padding: 5px;
+      text-decoration: none;
+      color: #00f;
     }
+
+    .channel-list a:hover {
+      background-color: #444;
+    }
+
+    .active-channel {
+      font-weight: bold;
+      color: #0f0;
+    }
+
   </style>
 </head>
 <body>
-
+  <!-- Login Form -->
   <div class="login-form" id="login-form">
     <div>
-      <h1 style="color: #00f;">Login</h1>
+      <h1 style="color: #00f;">Login to DevChat</h1>
       <input type="email" id="email" placeholder="Email" required>
       <input type="password" id="password" placeholder="Password" required>
       <button id="login-button">Login</button>
-      <p style="color: #00f;">Don't have an account? <a href="#" id="register-link">Register</a></p>
     </div>
   </div>
 
+  <!-- Terminal -->
   <div class="terminal" id="terminal">
     <div id="console-output" class="output"></div>
+    <div class="channel-list">
+      <a href="#" id="general-channel" class="channel-name">#general</a>
+      <a href="#" id="dev-chat-channel" class="channel-name">#dev-chat</a>
+      <a href="#" id="support-channel" class="channel-name">#support</a>
+    </div>
     <div class="command-line">
       <span>devchat@user:~$</span>
       <input type="text" id="command-input" placeholder="Enter command..." />
     </div>
   </div>
 
+  <!-- Firebase Script -->
   <script type="module">
+    // Firebase imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyAe8kZK1EtKX92L2Sopk5uSi2PDTzMtH6M",
       authDomain: "devchat-97f99.firebaseapp.com",
@@ -121,13 +135,21 @@
       measurementId: "G-5STVV3XZ0D"
     };
 
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    let username = "devUser";
-    let status = "Online";
+    const channels = {
+      'general': [],
+      'dev-chat': [],
+      'support': []
+    };
 
+    let currentChannel = 'general';
+    let currentUser = null;
+
+    // Log to console output
     function logToConsole(message) {
       const consoleOutput = document.getElementById("console-output");
       const newMessage = document.createElement("p");
@@ -136,89 +158,22 @@
       consoleOutput.scrollTop = consoleOutput.scrollHeight;
     }
 
-    function processCommand(command) {
-      const args = command.trim().split(' ');
-      const cmd = args[0].toLowerCase();
-
-      switch (cmd) {
-        case 'help':
-          logToConsole("Available Commands:");
-          logToConsole("help: Show all available commands");
-          logToConsole("send code <code>: Send a code snippet to others");
-          logToConsole("logout: Logout from your account");
-          logToConsole("clear: Clear the terminal output");
-          logToConsole("ping: Test connection (Pong!)");
-          logToConsole("set status <status>: Set your status (e.g., 'busy', 'away')");
-          logToConsole("whoami: Show your username and status");
-          logToConsole("dm <user> <message>: Send a direct message to a user");
-          logToConsole("add username <new_username>: Change your username");
-          break;
-
-        case 'send':
-          if (args[1] === 'code') {
-            const codeSnippet = args.slice(2).join(' ');
-            logToConsole(`Code shared: ${codeSnippet}`);
-          }
-          break;
-
-        case 'logout':
-          logToConsole("Logging out...");
-          auth.signOut().then(() => {
-            showLoginForm();
-          });
-          break;
-
-        case 'clear':
-          document.getElementById('console-output').innerHTML = '';
-          break;
-
-        case 'ping':
-          logToConsole("Pong!");
-          break;
-
-        case 'set':
-          if (args[1] === 'status') {
-            const newStatus = args.slice(2).join(' ');
-            status = newStatus;
-            logToConsole(`Status set to: ${status}`);
-          }
-          break;
-
-        case 'whoami':
-          logToConsole(`You are ${username}, status: ${status}`);
-          break;
-
-        case 'dm':
-          const user = args[1];
-          const dmMessage = args.slice(2).join(' ');
-          logToConsole(`Direct message to ${user}: ${dmMessage}`);
-          break;
-
-        case 'add':
-          if (args[1] === 'username') {
-            const newUsername = args.slice(2).join(' ');
-            username = newUsername;
-            logToConsole(`Username changed to: ${username}`);
-          }
-          break;
-
-        default:
-          logToConsole("Unknown command. Type 'help' for a list of available commands.");
-      }
-    }
-
+    // Show terminal when logged in
     function showTerminal() {
       document.getElementById("login-form").style.display = "none";
       document.getElementById("terminal").style.display = "flex";
     }
 
+    // Show login form when not logged in
     function showLoginForm() {
       document.getElementById("login-form").style.display = "flex";
       document.getElementById("terminal").style.display = "none";
     }
 
+    // Authentication listener
     auth.onAuthStateChanged((user) => {
       if (user) {
+        currentUser = user;
         logToConsole(`Logged in as: ${user.email}`);
         showTerminal();
       } else {
@@ -227,6 +182,7 @@
       }
     });
 
+    // Handle login
     document.getElementById("login-button").addEventListener("click", () => {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
@@ -241,43 +197,72 @@
           logToConsole("Logged in successfully!");
         })
         .catch((error) => {
-          const errorCode = error.code;
-          const errorMessage = error.message;
-          logToConsole(`Login Failed: ${errorCode} - ${errorMessage}`);
+          logToConsole(`Login Failed: ${error.message}`);
         });
     });
 
-    document.getElementById("register-link").addEventListener("click", (e) => {
-      e.preventDefault();
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-
-      if (!email || !password) {
-        logToConsole("Please enter both email and password.");
-        return;
-      }
-
-      createUserWithEmailAndPassword(auth, email, password)
-        .then(() => {
-          logToConsole("Registered new account successfully!");
-        })
-        .catch((error) => {
-          const errorCode = error.code;
-          const errorMessage = error.message;
-          logToConsole(`Registration Failed: ${errorCode} - ${errorMessage}`);
-        });
-    });
-
+    // Command listener
     const commandInput = document.getElementById("command-input");
     commandInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
         const command = commandInput.value.trim();
         logToConsole(`$ ${command}`);
-        processCommand(command);
-        commandInput.value = '';
+
+        if (command === "help") {
+          logToConsole("Available Commands:\nhelp - Show all available commands\nsend message <message> - Send a message to current channel\njoin <channel_name> - Join a channel\nsend code <code> - Send a code snippet\nlogout - Logout");
+        } else if (command.startsWith("send message")) {
+          const message = command.substring(13);
+          channels[currentChannel].push(message);
+          logToConsole(`Message sent to #${currentChannel}: ${message}`);
+          addDoc(collection(db, "messages"), { 
+            user: currentUser.email, 
+            channel: currentChannel, 
+            message: message, 
+            timestamp: new Date() 
+          });
+        } else if (command.startsWith("send code")) {
+          const code = command.substring(10);
+          channels[currentChannel].push(`\`\`\` ${code} \`\`\``);
+          logToConsole(`Code sent to #${currentChannel}: \n${code}`);
+          addDoc(collection(db, "messages"), { 
+            user: currentUser.email, 
+            channel: currentChannel, 
+            message: `\`\`\`${code}\`\`\``, 
+            timestamp: new Date() 
+          });
+        } else if (command.startsWith("join")) {
+          const channel = command.split(" ")[1];
+          if (channels[channel]) {
+            currentChannel = channel;
+            logToConsole(`Joined channel #${currentChannel}`);
+          } else {
+            logToConsole("Channel not found.");
+          }
+        } else if (command === "logout") {
+          signOut(auth);
+          logToConsole("Logged out.");
+          showLoginForm();
+        } else {
+          logToConsole("Unknown command.");
+        }
+
+        commandInput.value = "";
       }
     });
-  </script>
 
+    // Channel navigation
+    document.getElementById("general-channel").addEventListener("click", () => {
+      currentChannel = 'general';
+      logToConsole(`Joined channel #general`);
+    });
+    document.getElementById("dev-chat-channel").addEventListener("click", () => {
+      currentChannel = 'dev-chat';
+      logToConsole(`Joined channel #dev-chat`);
+    });
+    document.getElementById("support-channel").addEventListener("click", () => {
+      currentChannel = 'support';
+      logToConsole(`Joined channel #support`);
+    });
+  </script>
 </body>
 </html>
